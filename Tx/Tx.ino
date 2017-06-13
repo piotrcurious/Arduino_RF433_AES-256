@@ -1,6 +1,6 @@
-// Note: Updated Manchester library from github fails when
-// transmit data values above 767 (0x02FF), the receiver can't 
-// get the package
+// Note (13/06/2017): Updated Manchester library from github repository fails 
+// when transmit data values above 767 (0x02FF), the receiver can't get the 
+// packages. To avoid that, use the Manchester sources provided in this example.
 
 #include "Manchester.h"
 #include "src/AVR_Crypto_Lib_aes/aes.h"
@@ -42,15 +42,3 @@ void loop()
     
     delay(1000);
 }
-
-/*
-Serial.print("Package to send (decoded) - ");
-for(int i = 0; i < AES_BLOCK_SIZE; i++)
-{
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.print(toEncodeData[i]);
-    Serial.print(", ");
-}
-Serial.println(" ");
- */

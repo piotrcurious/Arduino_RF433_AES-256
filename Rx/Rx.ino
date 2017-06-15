@@ -37,11 +37,12 @@ void loop()
 
         man.beginReceiveArray(AES_BLOCK_SIZE, toDecodeData);
 
-        Serial.println("Package received");
-        Serial.print("ID: ");
-        Serial.print(id);
-        Serial.print("     CMD: ");
-        Serial.println(cmd);
+        Serial.print("\nPackage received:\n");
+        Serial.print("ID - 0x");
+        Serial.print(id, HEX);
+        Serial.print(" , Data (command) - 0x");
+        Serial.print(cmd, HEX);
+        Serial.print("\n");
 
         if(id == TX_DEVICE_ID)
         {

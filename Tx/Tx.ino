@@ -28,17 +28,18 @@ void loop()
     toEncodeData[0] = MY_ID;
     toEncodeData[1] = CMD;
     
-    Serial.println("Package to send");
-    Serial.print("ID: ");
-    Serial.print(toEncodeData[0]);
-    Serial.print("     CMD: ");
-    Serial.println(toEncodeData[1]);
+    Serial.print("\nPackage to send:\n");
+    Serial.print("ID: 0x");
+    Serial.print(toEncodeData[0], HEX);
+    Serial.print("     CMD: 0x");
+    Serial.print(toEncodeData[1], HEX);
+    Serial.print("\n");
 
     aes256_enc(toEncodeData, &key_context);
     man.transmitArray(AES_BLOCK_SIZE, toEncodeData);
     
-    Serial.println("Package sent");
-    Serial.println(" ");
+    Serial.print("Package sent\n");
+    Serial.print("\n");
     
     delay(1000);
 }

@@ -48,12 +48,12 @@ void loop()
         {
             if(cmd == CMD)
             {
-                Serial.print("Expected command from [");
-                Serial.print(TX_DEVICE_ID);
-                Serial.println("] has been received");
+                Serial.print("Expected command from device [0x");
+                Serial.print(TX_DEVICE_ID, HEX);
+                Serial.print("] has been received\n");
             }
         }
 
-        Serial.println(" ");
+        Serial.print("\n");
     }
 }

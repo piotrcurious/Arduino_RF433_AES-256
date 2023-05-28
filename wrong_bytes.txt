@@ -1,0 +1,163 @@
+// Include the libraries for RF433 communication, AES256 encryption and Manchester encoding
+#include <RH_ASK.h>
+#include <AESLib.h>
+#include <Manchester.h>
+
+// Define the pins for RF433 transmitter and receiver
+#define TX_PIN 12
+#define RX_PIN 11
+
+// Define the AES256 key and initialization vector
+#define AES_KEY "01234567890123456789012345678901"
+#define AES_IV "0123456789012345"
+
+// Define the Hamming code parameters
+#define DATA_SIZE 8 // Number of bits per data byte
+#define PARITY_SIZE 4 // Number of parity bits per data byte
+#define CODE_SIZE (DATA_SIZE + PARITY_SIZE) // Number of bits per encoded byte
+#define REDUNDANCY 4 // Number of times to repeat each encoded byte
+
+// Create an instance of RH_ASK for RF433 communication
+RH_ASK rf433_driver(2000, RX_PIN, TX_PIN);
+
+// Create an instance of AESLib for AES256 encryption
+AESLib aes256;
+
+// Create a buffer for storing the encrypted data
+byte encrypted_data[16];
+
+// Create a buffer for storing the encoded data
+byte encoded_data[CODE_SIZE * REDUNDANCY];
+
+// A function to generate a Hamming code for a given data byte
+byte hamming_encode(byte data) {
+  // Initialize the encoded byte with the data bits
+  byte encoded = data;
+  
+  // Calculate the parity bits using XOR operations
+  byte p1 = (data & 0b10000000) ^ (data & 0b01000000) ^ (data & 0b00100000) ^ (data & 0b00010000);
+  byte p2 = (data & 0b10000000) ^ (data & 0b00001000) ^ (data & 0b00000100) ^ (data & 0b00000010);
+  byte p3 = (data & 0b01000000) ^ (data & 0b00001000) ^ (data & 0b00000010) ^ (data & 0b00000001);
+  byte p4 = (data & 0b00100000) ^ (data & 0b00000100) ^ (data & 0b00000001);
+
+  // Shift the parity bits to the right positions
+  p1 = p1 >> 3;
+  p2 = p2 >> 5;
+  p3 = p3 >> 6;
+  p4 = p4 >> 7;
+
+  // Set the parity bits in the encoded byte
+  encoded = encoded | p1 | p2 | p3 | p4;
+
+  // Return the encoded byte
+  return encoded;
+}
+
+// A function to send a data byte using RF433 communication with Manchester encoding, AES256 encryption and Hamming error correction
+void send_byte(byte data) {
+  // Encrypt the data byte using AES256
+  aes256.encrypt(encrypted_data, &data, AES_KEY, AES_IV);
+
+  // Encode the encrypted byte using Hamming code
+  byte encoded = hamming_encode(encrypted_data[0]);
+
+  // Repeat the encoded byte for redundancy
+  for (int i = 0; i < REDUNDANCY; i++) {
+    encoded_data[i] = encoded;
+  }
+
+  // Send the encoded data using Manchester encoding and RF433 communication
+  man.transmitArray(CODE_SIZE * REDUNDANCY, encoded_data);
+}
+
+// A function to receive a data byte using RF433 communication with Manchester encoding, AES256 encryption and Hamming error correction
+byte receive_byte() {
+  // Receive the encoded data using Manchester decoding and RF433 communication
+  man.receiveArray(CODE_SIZE * REDUNDANCY, encoded_data);
+
+  // Decode the encrypted byte using Hamming code
+  byte decoded = hamming_decode(encoded_data);
+
+  // Decrypt the data byte using AES256
+  aes256.decrypt(&data, encrypted_data, AES_KEY, AES_IV);
+
+  // Return the data byte
+  return data;
+}
+
+// A function to decode a Hamming code for a given encoded byte
+byte hamming_decode(byte encoded) {
+  // Initialize the decoded byte with the data bits
+  byte decoded = encoded & 0b11110000;
+
+  // Calculate the parity bits using XOR operations
+  byte p1 = (encoded & 0b10000000) ^ (encoded & 0b01000000) ^ (encoded & 0b00100000) ^ (encoded & 0b00010000);
+  byte p2 = (encoded & 0b10000000) ^ (encoded & 0b00001000) ^ (encoded & 0b00000100) ^ (encoded & 0b00000010);
+  byte p3 = (encoded & 0b01000000) ^ (encoded & 0b00001000) ^ (encoded & 0b00000010) ^ (encoded & 0b00000001);
+  byte p4 = (encoded & 0b00100000) ^ (encoded & 0b00000100) ^ (encoded & 0b00000001);
+
+  // Shift the parity bits to the right positions
+  p1 = p1 >> 3;
+  p2 = p2 >> 5;
+  p3 = p3 >> 6;
+  p4 = p4 >> 7;
+
+  // Check if there is any error in the encoded byte
+  byte error = p1 | p2 | p3 | p4;
+
+  // If there is an error, correct it by flipping the corresponding bit
+  if (error != 0) {
+    decoded = decoded ^ error;
+  }
+
+  // Return the decoded byte
+  return decoded;
+}
+
+// Define a constant for the ping-pong test data
+#define PING_PONG_DATA 0b10101010
+
+// Define a variable for counting the number of data lost
+int data_lost = 0;
+
+// A function to set up the RF433 communication and the serial monitor
+void setup() {
+  // Initialize the RF433 communication
+  rf433_driver.init();
+
+  // Initialize the serial monitor
+  Serial.begin(9600);
+}
+
+// A function to perform the ping-pong test and display the data lost
+void loop() {
+  // Send the ping-pong data using the send_byte function
+  send_byte(PING_PONG_DATA);
+
+  // Wait for a response from the receiver
+  if (rf433_driver.waitAvailableTimeout(1000)) {
+    // Receive the data using the receive_byte function
+    byte data = receive_byte();
+
+    // Check if the data matches the ping-pong data
+    if (data == PING_PONG_DATA) {
+      // Print a message indicating success
+      Serial.println("Ping-pong successful!");
+    } else {
+      // Print a message indicating failure and increment the data lost counter
+      Serial.println("Ping-pong failed!");
+      data_lost++;
+    }
+  } else {
+    // Print a message indicating timeout and increment the data lost counter
+    Serial.println("Ping-pong timeout!");
+    data_lost++;
+  }
+
+  // Print the number of data lost so far
+  Serial.print("Data lost: ");
+  Serial.println(data_lost);
+
+  // Wait for a second before repeating the test
+  delay(1000);
+}

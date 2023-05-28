@@ -1,4 +1,7 @@
+//written by BingAI 
+
 // Include the libraries for RF433 communication, AES256 encryption and Hamming error correction
+
 #include <RH_ASK.h>
 #include <AESLib.h>
 #include <Hamming.h>
